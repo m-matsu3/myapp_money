@@ -66,6 +66,16 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; 
   overflow-wrap: anywhere;
 }
 
+.hero-sub { font-size: 13px; margin-top: 2px; }
+
+/* 引き落としより後に入ってくる分 */
+.later {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border-radius: 16px; padding: 10px 20px;
+}
+.later small { display: block; }
+.later .money { font-size: 22px; }
+
 /* 内訳：枠で囲み、見出しは固定で行の一覧だけがスクロールする */
 .breakdown {
   flex: 1; min-height: 0; display: flex; flex-direction: column;

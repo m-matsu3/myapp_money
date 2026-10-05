@@ -1,4 +1,4 @@
-// つかえるお金 — 口座残高 + 次の給料 + 入金 − 引き落とし = 今月使えるお金
+// つかえるお金 — 最後の引き落とし日までに使える額と、それ以降に入ってくる額を分けて表示する
 // データはこの端末の localStorage にだけ保存する
 
 const KEY = 'tsukaeru-okane-v1';
@@ -85,13 +85,16 @@ function save() {
 
 function compute() {
   const sum = (list) => list.reduce((t, c) => t + c.amount, 0);
-  const incomeTotal = sum(state.charges.filter((c) => c.kind === 'in'));
-  const chargeTotal = sum(state.charges.filter((c) => c.kind !== 'in'));
+  const outs = state.charges.filter((c) => c.kind !== 'in');
+  const incomes = [state.salary, ...state.charges.filter((c) => c.kind === 'in')];
+  // 区切りは最後の引き落とし日。その日までに入るお金で、すべての引き落としをまかなう
+  const cutoff = outs.reduce((last, c) => (c.date > last ? c.date : last), '') || null;
+  const isLater = (c) => cutoff !== null && c.date > cutoff;
   return {
     today: todayStr(),
-    incomeTotal,
-    chargeTotal,
-    usable: state.cash + state.salary.amount + incomeTotal - chargeTotal,
+    cutoff,
+    usable: state.cash + sum(incomes.filter((c) => !isLater(c))) - sum(outs),
+    later: sum(incomes.filter(isLater)),
   };
 }
 
@@ -119,6 +122,13 @@ function render() {
   const hero = h('section', { class: 'hero use' },
     h('p', { class: 'hero-label' }, '今月つかえるお金'),
     h('p', { class: 'hero-amount' }, (c.usable < 0 ? '−' : '') + yen(c.usable)),
+    c.cutoff && h('p', { class: 'hero-sub' }, `${md(c.cutoff)} の引き落としまで`),
+  );
+
+  // 最後の引き落としより後に入ってくるお金
+  const later = c.cutoff && h('section', { class: 'later use' },
+    h('span', {}, 'それ以降につかえるお金', h('small', {}, `${md(c.cutoff)} より後に入る分`)),
+    h('span', { class: 'money' }, yen(c.later)),
   );
 
   // tone: 'in'（増える・緑） / 'out'（減る・赤）。行全体をその色で塗る
@@ -153,7 +163,7 @@ function render() {
     h('button', { class: 'fab out', 'aria-label': '引き落としを追加', onclick: () => editCharge(null, 'out') }, '−'),
   );
 
-  document.getElementById('app').replaceChildren(hero, breakdown, fabs);
+  document.getElementById('app').replaceChildren(...[hero, later, breakdown, fabs].filter(Boolean));
 }
 
 // ---------- 左スワイプで削除 ----------
