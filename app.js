@@ -115,8 +115,6 @@ function render() {
   const c = compute();
   const sorted = [...state.charges].sort((a, b) => (a.date < b.date ? -1 : 1));
 
-  document.getElementById('today').textContent = `今日 ${md(c.today)}`;
-
   // 足りないときも見出しと色は変えず、ここだけマイナスを付けて表す
   const hero = h('section', { class: 'hero use' },
     h('p', { class: 'hero-label' }, '今月つかえるお金'),
@@ -164,7 +162,7 @@ const TRASH_ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" 
 const TRASH_WIDTH = 68;
 let closeOpenSwipe = null; // 開いたままの行は同時に1つだけ
 
-// 行を左にずらすと、右側にゴミ箱ボタンが出てくる
+// 行を左にずらすと右側にゴミ箱が出てくる。半分より先までスライドしきって離すとそのまま削除する
 function swipeToDelete(rowEl, onDelete) {
   const trash = h('button', { class: 'trash', 'aria-label': '削除', onclick: onDelete });
   trash.innerHTML = TRASH_ICON;
@@ -174,9 +172,14 @@ function swipeToDelete(rowEl, onDelete) {
 
   const move = (to, animate) => {
     x = to;
-    rowEl.style.transition = animate ? 'transform .18s ease-out' : 'none';
+    const t = animate ? '.18s ease-out' : '0s';
+    rowEl.style.transition = `transform ${t}`;
+    trash.style.transition = `width ${t}`;
     rowEl.style.transform = x ? `translateX(${x}px)` : '';
+    // ゴミ箱は行が動いた分だけ広がる
+    trash.style.width = `${Math.max(TRASH_WIDTH, -x) - 8}px`;
     wrap.classList.toggle('show', x !== 0);
+    wrap.classList.toggle('full', -x > wrap.offsetWidth / 2);
   };
   const close = () => { move(0, true); if (closeOpenSwipe === close) closeOpenSwipe = null; };
 
@@ -194,14 +197,17 @@ function swipeToDelete(rowEl, onDelete) {
       rowEl.setPointerCapture(e.pointerId);
       if (closeOpenSwipe && closeOpenSwipe !== close) closeOpenSwipe();
     }
-    move(Math.max(-TRASH_WIDTH, Math.min(0, base + dx)), false);
+    move(Math.max(-wrap.offsetWidth, Math.min(0, base + dx)), false);
   });
   const end = () => {
     if (!down) return;
     down = false;
     if (!dragging) return;
     suppressClick = true; // スワイプ直後のクリックで編集シートが開かないようにする
-    if (x < -TRASH_WIDTH / 2) { move(-TRASH_WIDTH, true); closeOpenSwipe = close; }
+    if (-x > wrap.offsetWidth / 2) {
+      move(-wrap.offsetWidth, true);
+      setTimeout(onDelete, 180); // 行が画面の外へ出きってから消す
+    } else if (-x > TRASH_WIDTH / 2) { move(-TRASH_WIDTH, true); closeOpenSwipe = close; }
     else close();
   };
   rowEl.addEventListener('pointerup', end);
@@ -273,6 +279,13 @@ function openSheet(title, fields, actions) {
 }
 
 sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
+
+// キーボードが出ている間は、見えている範囲の高さにシートを収める（iOS は画面の高さを変えてくれない）
+if (window.visualViewport) {
+  const fit = () => document.documentElement.style.setProperty('--visible-height', `${visualViewport.height}px`);
+  visualViewport.addEventListener('resize', fit);
+  fit();
+}
 
 function editCash() {
   openSheet('口座残高', [

@@ -35,16 +35,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: calc(env(safe-area-inset-top) + 16px) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 p, h1, h2 { margin: 0; }
 small { font-size: 12px; font-weight: 400; }
 
 .top, main { width: 100%; max-width: 480px; margin: 0 auto; padding: 0 14px; }
-.top { display: flex; justify-content: space-between; align-items: baseline; padding-top: 14px; padding-bottom: 8px; }
+.top { padding-top: 14px; padding-bottom: 8px; }
 .top h1 { font-size: 19px; font-weight: 600; }
-.top span { color: var(--muted); font-size: 13px; }
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 
 .money { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
@@ -92,14 +91,16 @@ button.plan:active, .fab:active { filter: brightness(.94); }
 .empty { color: var(--muted); font-size: 13px; padding: 14px 4px; }
 .link { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 12px; padding: 10px; align-self: center; }
 
-/* 左スワイプで行の右に出てくるゴミ箱。行の角からはみ出さないよう、ずらしている間だけ見せる */
+/* 左スワイプで行の右に出てくるゴミ箱。行の角からはみ出さないよう、ずらしている間だけ見せる。
+   幅は JS が行の動きに合わせて広げ、離すと削除される位置まで来たら .full で濃くする */
 .swipe { position: relative; flex: none; }
 .swipe .plan { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .trash {
   position: absolute; top: 0; right: 0; bottom: 0; width: 60px;
   display: grid; place-items: center; border: 0; border-radius: 14px;
-  background: #dc2626; color: #fff; visibility: hidden;
+  background: #ef4444; color: #fff; visibility: hidden;
 }
+.swipe.full .trash { background: #b91c1c; }
 .swipe.show .trash { visibility: visible; }
 
 /* 追加用の丸いボタン */
@@ -112,30 +113,37 @@ button.plan:active, .fab:active { filter: brightness(.94); }
 }
 
 .btn {
-  border: 0; border-radius: 12px; padding: 13px 16px; min-height: 48px;
+  border: 0; border-radius: 12px; padding: 10px 16px; min-height: 44px;
   background: var(--grad-use); color: var(--on-grad); font-weight: 500;
 }
 .btn.sub { background: none; color: var(--text); outline: 1px solid var(--line); }
 .btn.ghost { background: none; color: var(--muted); }
 .btn.danger { background: none; color: var(--neg); }
 
-/* 下から出る入力シート */
+/* 入力シート。下に置くとキーボードに隠れるので、画面の上側に出す */
 dialog {
-  border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 480px;
+  border: 0; padding: 0; width: calc(100% - 20px); max-width: 460px;
+  margin: calc(env(safe-area-inset-top) + 10px) auto auto;
+  max-height: calc(var(--visible-height, 100dvh) - env(safe-area-inset-top) - 20px);
+  overflow-y: auto;
   background: var(--card); color: var(--text);
-  border-radius: 20px 20px 0 0;
+  border-radius: 20px;
 }
 dialog::backdrop { background: rgba(0, 0, 0, .45); }
-dialog form { padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); display: grid; gap: 14px; }
-dialog h2 { font-size: 18px; }
-#sheet-fields, #sheet-actions { display: grid; gap: 12px; }
-#sheet-actions { gap: 6px; }
+dialog form { padding: 16px; display: grid; gap: 10px; }
+dialog h2 { font-size: 17px; font-weight: 600; }
+#sheet-fields { display: grid; gap: 8px; }
+/* 保存とキャンセルは横に並べ、それ以外の操作は下に1つずつ置く */
+#sheet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#sheet-actions .btn { order: 1; grid-column: 1 / -1; }
+#sheet-actions .btn[type="submit"] { order: 0; grid-column: 2; grid-row: 1; }
+#sheet-actions .btn.ghost { order: 0; grid-column: 1; grid-row: 1; outline: 1px solid var(--line); }
 .field { display: grid; gap: 4px; }
 .field > span:first-child { font-size: 13px; color: var(--muted); }
 /* 16px 未満だと iOS が入力時に拡大してしまう */
 input[type="text"], input[type="date"] {
-  width: 100%; min-height: 48px; padding: 10px 12px;
-  font: inherit; font-size: 18px; color: var(--text);
+  width: 100%; min-height: 44px; padding: 8px 12px;
+  font: inherit; font-size: 17px; color: var(--text);
   background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
   -webkit-appearance: none; appearance: none;
 }
